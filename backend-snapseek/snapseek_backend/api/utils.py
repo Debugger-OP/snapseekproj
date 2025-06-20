@@ -3,6 +3,7 @@
 import torch
 from transformers import CLIPProcessor, CLIPModel
 from pinecone import Pinecone
+import requests
 
 # Initialize HuggingFace CLIP model
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
@@ -30,3 +31,22 @@ def save_to_pinecone(image_id, vector):
         }
     ])
     return pinecone_id
+
+GOOGLE_API_KEY = "AIzaSyARx048uN7_UFyO1OWXUHi9sB5sKvG0Qkk"
+GOOGLE_CX = "669231d6dcaba4e38"
+
+def fetch_images_from_google(query, num_results=3):
+    url = "https://www.googleapis.com/customsearch/v1"
+    params = {
+        "key": GOOGLE_API_KEY,
+        "cx": GOOGLE_CX,
+        "q": query,
+        "searchType": "image",
+        "num": num_results
+    }
+
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        data = response.json()
+        return [item['link'] for item in data.get('items', [])]
+    return []

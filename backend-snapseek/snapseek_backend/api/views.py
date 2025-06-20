@@ -5,6 +5,7 @@ from .serializers import ImageSerializer
 from .models import Image
 from .utils import generate_embedding, save_to_pinecone
 from pinecone import Pinecone
+from .utils import fetch_images_from_google
 
 class ImageUploadView(APIView):
     def post(self, request):
@@ -57,4 +58,13 @@ class ImageSearchView(APIView):
 
         images = Image.objects.filter(pinecone_id__in=filtered_ids)
 
-        return Response(ImageSerializer(images, many=True).data)
+        if images.exists():
+            return Response(ImageSerializer(images, many=True).data)
+
+        # 🔁 Google fallback if no Pinecone matches
+        fallback_images = fetch_images_from_google(query)
+
+        return Response({
+            "fallback": True,
+            "images": fallback_images
+        }, status=200)
