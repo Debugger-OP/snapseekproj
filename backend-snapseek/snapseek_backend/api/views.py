@@ -4,6 +4,7 @@ from rest_framework import status
 from .serializers import ImageSerializer
 from .models import Image
 from .utils import generate_embedding, save_to_pinecone
+from pinecone import Pinecone
 
 class ImageUploadView(APIView):
     def post(self, request):
@@ -23,3 +24,37 @@ class ImageUploadView(APIView):
 
             return Response(ImageSerializer(image_instance).data, status=201)
         return Response(serializer.errors, status=400)
+
+
+class ImageSearchView(APIView):
+    def post(self, request):
+        query = request.data.get("query")
+        if not query:
+            return Response({"error": "Query not provided"}, status=400)
+
+        # Step 1: Get vector for the query
+        query_vector = generate_embedding(query)
+
+        # Step 2: Search Pinecone
+        pc = Pinecone(api_key="pcsk_4dq4hH_MM1L4WzbhMUis1XgtNUvFH9bMnwK2nka5wMV7vF4wfh4ARBucGW6YDb74BqQ9Ct")
+        index = pc.Index("snapseek-images")
+        results = index.query(
+         vector=query_vector,
+            top_k=5,
+            include_values=False,
+            include_metadata=False
+)
+
+# Set a threshold — typical cosine similarity ranges from 0.0 to 1.0
+        MIN_SCORE = 0.75
+
+# Filter out low-confidence results
+        filtered_ids = [
+        match['id']
+        for match in results['matches']
+        if match['score'] >= MIN_SCORE
+]
+
+        images = Image.objects.filter(pinecone_id__in=filtered_ids)
+
+        return Response(ImageSerializer(images, many=True).data)
