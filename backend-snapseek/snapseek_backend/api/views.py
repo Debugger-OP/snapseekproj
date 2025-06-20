@@ -6,6 +6,7 @@ from .models import Image
 from .utils import generate_embedding, save_to_pinecone
 from pinecone import Pinecone
 from .utils import fetch_images_from_google
+from decouple import config
 
 class ImageUploadView(APIView):
     def post(self, request):
@@ -37,7 +38,7 @@ class ImageSearchView(APIView):
         query_vector = generate_embedding(query)
 
         # Step 2: Search Pinecone
-        pc = Pinecone(api_key="pcsk_4dq4hH_MM1L4WzbhMUis1XgtNUvFH9bMnwK2nka5wMV7vF4wfh4ARBucGW6YDb74BqQ9Ct")
+        pc = Pinecone(api_key=config("PINECONE_API_KEY"))
         index = pc.Index("snapseek-images")
         results = index.query(
          vector=query_vector,
@@ -47,7 +48,7 @@ class ImageSearchView(APIView):
 )
 
 # Set a threshold — typical cosine similarity ranges from 0.0 to 1.0
-        MIN_SCORE = 0.75
+        MIN_SCORE = 0.80
 
 # Filter out low-confidence results
         filtered_ids = [
